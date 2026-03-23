@@ -1,4 +1,3 @@
-<!-- Copyright 2025 Infinity Solutions LLC. All Rights Reserved. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,7 +6,9 @@
 <title>My Account — Infinity Solutions</title>
 <meta name="description" content="Manage your Infinity Solutions subscriptions and account.">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Instrument+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+
 <style>
+/* THEME */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
   --bg:#080b12;--bg2:#0e1320;--bg3:#141928;
@@ -18,16 +19,14 @@
 }
 html{scroll-behavior:smooth}
 body{font-family:'Instrument Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding-top:70px}
-body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:999;opacity:.025;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E")}
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:999;opacity:.025;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E")}
 
 @keyframes up{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
-@keyframes spin{to{transform:rotate(360deg)}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 
 nav{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:center;justify-content:space-between;padding:1rem 2rem;background:rgba(8,11,18,.92);backdrop-filter:blur(14px);border-bottom:1px solid var(--border)}
 .logo{font-family:'Syne',sans-serif;font-weight:800;font-size:1rem;color:var(--text);text-decoration:none}
-.logo em{color:var(--accent);font-style:normal}
+.logo em{color:var(--accent); font-style:normal}
 .nav-right{display:flex;align-items:center;gap:1rem}
 .nav-hub{font-size:.8rem;color:var(--muted2);text-decoration:none;transition:color .18s}
 .nav-hub:hover{color:var(--text)}
@@ -139,30 +138,32 @@ footer a{color:var(--accent2);text-decoration:none}
 
 <script>
 const WORKER_URL = 'https://justdocs-worker.robertjosephreynolds.workers.dev';
+const token = localStorage.getItem('supabase_token');
 
-// APPS CONFIG (subdomain ready)
+if(!token){ window.location.href='https://contactinfinitysolutionsllc-ops.github.io/login/'; }
+
+// APPS CONFIG
 const APPS = [
   { id:'education', name:'InfinityLearn', icon:'📚', url:'https://education.infinityhub.dev', price:'$8/mo · 5 free/month' },
   { id:'wellness', name:'InfinityWellness', icon:'🌿', url:'https://wellness.infinityhub.dev', price:'$4.99/mo · 5 free/month' },
   { id:'infinitybiz', name:'InfinityBiz', icon:'💼', url:'https://infinitybiz.infinityhub.dev', price:'$12/mo · 5 free/month' },
   { id:'reputationai', name:'ReputationAI', icon:'⭐', url:'https://reputationai.infinityhub.dev', price:'$19/mo · 3 free/month' },
-  // add more as needed
 ];
 
-// PAY-PER-USE CONFIG
 const PPU = [
   { name:'MedDispute AI', icon:'🏥', url:'https://meddispute.infinityhub.dev', desc:'From $1.99/letter' },
   { name:'PolicyAI', icon:'🔒', url:'https://policyai.infinityhub.dev', desc:'From $7.99/doc' },
   { name:'NameAI', icon:'✨', url:'https://nameai.infinityhub.dev', desc:'5 free · $2.99 unlock' },
-  // add more as needed
 ];
 
 let currentEmail = '';
 
-// ── INIT ─────────────────────────────
+// INIT
 (async function init(){
   try{
-    const res = await fetch(WORKER_URL+'/auth/session',{credentials:'include'});
+    const res = await fetch(WORKER_URL+'/auth/session',{
+      headers:{'Authorization':'Bearer '+token}
+    });
     const data = await res.json();
     if(!data.loggedIn){ window.location.href='https://contactinfinitysolutionsllc-ops.github.io/login/'; return; }
     currentEmail = data.email;
@@ -172,7 +173,11 @@ let currentEmail = '';
     // Load subscription apps
     const statusMap = {};
     await Promise.all(APPS.map(async app=>{
-      const r = await fetch(WORKER_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'checkSubscriber', email:currentEmail, app:app.id})});
+      const r = await fetch(WORKER_URL,{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+        body:JSON.stringify({action:'checkSubscriber', email:currentEmail, app:app.id})
+      });
       const j = await r.json();
       statusMap[app.id] = j.active===true;
     }));
@@ -212,15 +217,13 @@ let currentEmail = '';
   }catch(e){ console.error(e); alert('Failed to load account data.'); }
 })();
 
-// SIGN OUT
 function signOut(){
-  fetch(WORKER_URL+'/auth/logout',{method:'POST',credentials:'include'})
-    .finally(()=>window.location.href='https://contactinfinitysolutionsllc-ops.github.io/login/');
+  localStorage.removeItem('supabase_token');
+  window.location.href='https://contactinfinitysolutionsllc-ops.github.io/login/';
 }
 
-// SWITCH ACCOUNT
-function switchAccount(){ window.location.href='https://contactinfinitysolutionsllc-ops.github.io/login/'; }
-
+function switchAccount(){ signOut(); }
 </script>
+
 </body>
 </html>
