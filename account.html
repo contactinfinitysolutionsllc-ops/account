@@ -246,18 +246,18 @@ function initSupabase() {
 }
 
 const APPS = [
-  {id:'education',    name:'InfinityLearn',    icon:'📚', url:'https://contactinfinitysolutionsllc-ops.github.io/education/',     price:'$8/mo'},
-  {id:'wellness',     name:'InfinityWellness', icon:'🌿', url:'https://contactinfinitysolutionsllc-ops.github.io/wellness/',      price:'$4.99/mo'},
+  {id:'education',    name:'InfinityLearn',    icon:'📚', url:'https://contactinfinitysolutionsllc-ops.github.io/education/',     price:'$12/mo'},
+  {id:'wellness',     name:'InfinityWellness', icon:'🌿', url:'https://contactinfinitysolutionsllc-ops.github.io/wellness/',      price:'$12/mo'},
   {id:'infinitybiz',  name:'InfinityBiz',      icon:'💼', url:'https://contactinfinitysolutionsllc-ops.github.io/infinitybiz/',  price:'$12/mo'},
-  {id:'reputationai', name:'ReputationAI',     icon:'⭐', url:'https://contactinfinitysolutionsllc-ops.github.io/reputationai/', price:'$19/mo'},
-  {id:'listingwriter',name:'ListingWriter',    icon:'🏠', url:'https://contactinfinitysolutionsllc-ops.github.io/listingwriter/',price:'$15/mo'},
-  {id:'legacyplanner',name:'Legacy Planner',   icon:'🕯️', url:'https://contactinfinitysolutionsllc-ops.github.io/legacyplanner/',price:'$7.99/mo'},
-  {id:'resumeai',     name:'ResumeAI',         icon:'📄', url:'https://contactinfinitysolutionsllc-ops.github.io/resumeai/',     price:'$9.99/mo'},
-  {id:'contractai',   name:'ContractAI',       icon:'📋', url:'https://contactinfinitysolutionsllc-ops.github.io/contractai/',   price:'$19.99/mo'},
-  {id:'grantai',      name:'GrantAI',          icon:'🔍', url:'https://contactinfinitysolutionsllc-ops.github.io/grantai/',      price:'$24.99/mo'},
-  {id:'creditai',     name:'CreditAI',         icon:'📈', url:'https://contactinfinitysolutionsllc-ops.github.io/creditai/',     price:'$14.99/mo'},
-  {id:'mailai',       name:'MailAI',           icon:'✉️', url:'https://contactinfinitysolutionsllc-ops.github.io/mailai/',       price:'$19.99/mo'},
-  {id:'socialai',     name:'SocialAI',         icon:'📱', url:'https://contactinfinitysolutionsllc-ops.github.io/socialai/',     price:'$15/mo'},
+  {id:'reputationai', name:'ReputationAI',     icon:'⭐', url:'https://contactinfinitysolutionsllc-ops.github.io/reputationai/', price:'$12/mo'},
+  {id:'listingwriter',name:'ListingWriter',    icon:'🏠', url:'https://contactinfinitysolutionsllc-ops.github.io/listingwriter/',price:'$12/mo'},
+  {id:'legacyplanner',name:'Legacy Planner',   icon:'🕯️', url:'https://contactinfinitysolutionsllc-ops.github.io/legacyplanner/',price:'$12/mo'},
+  {id:'resumeai',     name:'ResumeAI',         icon:'📄', url:'https://contactinfinitysolutionsllc-ops.github.io/resumeai/',     price:'$12/mo'},
+  {id:'contractai',   name:'ContractAI',       icon:'📋', url:'https://contactinfinitysolutionsllc-ops.github.io/contractai/',   price:'$12/mo'},
+  {id:'grantai',      name:'GrantAI',          icon:'🔍', url:'https://contactinfinitysolutionsllc-ops.github.io/grantai/',      price:'$12/mo'},
+  {id:'creditai',     name:'CreditAI',         icon:'📈', url:'https://contactinfinitysolutionsllc-ops.github.io/creditai/',     price:'$12/mo'},
+  {id:'mailai',       name:'MailAI',           icon:'✉️', url:'https://contactinfinitysolutionsllc-ops.github.io/mailai/',       price:'$12/mo'},
+  {id:'socialai',     name:'SocialAI',         icon:'📱', url:'https://contactinfinitysolutionsllc-ops.github.io/socialai/',     price:'$12/mo'},
 ];
 
 // ── HELPERS ───────────────────────────────────────────────────────────────
@@ -347,7 +347,7 @@ async function doForgot() {
 }
 
 async function doSignOut() {
-  localStorage.removeItem('ig_account_email');
+  ['ig_account_email','ig_account_token','ig_account_name'].forEach(k => localStorage.removeItem(k));
   await sb.auth.signOut();
   show('auth');
   switchTab('login');
@@ -385,17 +385,28 @@ async function resendConfirmation() {
 // ── DASHBOARD ─────────────────────────────────────────────────────────────
 async function loadDashboard() {
   show('loading');
-  const { data: { user } } = await sb.auth.getUser();
+  const [{ data: { user } }, { data: { session } }] = await Promise.all([
+    sb.auth.getUser(),
+    sb.auth.getSession()
+  ]);
   if (!user) { show('auth'); return; }
 
   const email = user.email;
+  const name  = user.user_metadata?.name || user.user_metadata?.full_name || email;
+
+  // Store for all apps to use (shared localStorage — same domain)
+  localStorage.setItem('ig_account_email', email);
+  if (session?.access_token) localStorage.setItem('ig_account_token', session.access_token);
+  if (name) localStorage.setItem('ig_account_name', name);
+
+  // Handle ?return= redirect (e.g. coming back from a tool page sign-in)
+  const returnUrl = new URLSearchParams(window.location.search).get('return');
+  if (returnUrl) { window.location.href = returnUrl; return; }
+
   document.getElementById('dash-email').textContent = email;
   document.getElementById('dash-avatar').textContent = email[0].toUpperCase();
   document.getElementById('dash-since').textContent =
     'Member since ' + new Date(user.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-
-  // Store for apps to use
-  localStorage.setItem('ig_account_email', email);
 
   // Show dashboard IMMEDIATELY with checking state — don't make user wait
   show('dashboard');
