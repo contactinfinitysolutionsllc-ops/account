@@ -1,32 +1,30 @@
-<!--
-  ig-auth-nav.js — Infinity Solutions shared auth snippet
-  Drop this script tag into any app page, right before </body>
-  It adds account awareness to the existing nav without changing layout.
+// ig-auth-nav.js — Infinity Solutions shared auth nav snippet
+// Drop this script tag into any app page, right before </body>
+// Requires a .nav-right element in the page nav.
+//
+// Usage:
+// <script src="https://contactinfinitysolutionsllc-ops.github.io/account/ig-auth-nav.js"></script>
+//
+// What it does:
+// - Checks if user is logged in via shared localStorage tokens (set by account page)
+// - If logged in: adds "👤 Account" link to .nav-right pointing to account page
+// - If not: adds "Sign In" link pointing to account page with ?return= param
 
-  Usage:
-  <script src="https://contactinfinitysolutionsllc-ops.github.io/account/ig-auth-nav.js"></script>
-
-  What it does:
-  - Checks if user is logged in via Supabase
-  - If logged in: adds "👤 Your Account" link to .nav-right
-  - If not: adds "Sign In" link pointing to account page
-  - Stores email in localStorage as ig_account_email for subscription checks
--->
-<script>
 (function() {
-  const SUPABASE_URL = 'https://zcvkgevcrgsujnqovxgd.supabase.co';
-  const SUPABASE_KEY = 'sb_publishable_WeAsyK0Xo7G-VbhIwFUlNQ_pGNmu75T';
-  const ACCOUNT_URL  = 'https://contactinfinitysolutionsllc-ops.github.io/account/';
+  const ACCOUNT_URL = 'https://contactinfinitysolutionsllc-ops.github.io/account/';
 
-  // Load Supabase if not already loaded
-  function loadSupabase() {
-    return new Promise((resolve) => {
-      if (window.supabase && window.supabase.createClient) { resolve(); return; }
-      const s = document.createElement('script');
-      s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
-      s.onload = resolve;
-      document.head.appendChild(s);
-    });
+  function getStoredSession() {
+    const token = localStorage.getItem('ig_account_token');
+    const email = localStorage.getItem('ig_account_email');
+    if (!token || !email) return null;
+    try {
+      const p = JSON.parse(atob(token.split('.')[1]));
+      if (p.exp && Date.now() / 1000 > p.exp) {
+        ['ig_account_token','ig_account_email','ig_account_name'].forEach(k => localStorage.removeItem(k));
+        return null;
+      }
+    } catch(e) { return null; }
+    return { token, email, name: localStorage.getItem('ig_account_name') || email };
   }
 
   function addNavItem(html) {
@@ -34,21 +32,15 @@
     if (!navRight) return;
     const div = document.createElement('div');
     div.innerHTML = html;
-    // Insert before the nav-badge (last child usually)
     const badge = navRight.querySelector('.nav-badge');
     if (badge) navRight.insertBefore(div.firstChild, badge);
     else navRight.appendChild(div.firstChild);
   }
 
-  loadSupabase().then(async () => {
-    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    const { data: { session } } = await sb.auth.getSession();
+  window.addEventListener('DOMContentLoaded', function() {
+    const session = getStoredSession();
 
-    if (session && session.user) {
-      const email = session.user.email;
-      localStorage.setItem('ig_account_email', email);
-
-      // Add account link with initial letter avatar
+    if (session) {
       addNavItem(`
         <a href="${ACCOUNT_URL}" style="
           display:inline-flex;align-items:center;gap:.4rem;
@@ -62,14 +54,13 @@
             display:inline-flex;align-items:center;justify-content:center;
             font-family:'Syne',sans-serif;font-weight:800;font-size:.65rem;
             color:#7eb0ff;flex-shrink:0;
-          ">${email[0].toUpperCase()}</span>
+          ">${session.email[0].toUpperCase()}</span>
           Account
         </a>
       `);
     } else {
-      // Not logged in - show Sign In link
       addNavItem(`
-        <a href="${ACCOUNT_URL}" style="
+        <a href="${ACCOUNT_URL}?return=${encodeURIComponent(window.location.href)}" style="
           font-size:.78rem;color:var(--muted2,#a0a8c0);text-decoration:none;transition:color .18s;
         " onmouseover="this.style.color='var(--text,#f0f2f8)'" onmouseout="this.style.color='var(--muted2,#a0a8c0)'">
           Sign in
@@ -78,4 +69,3 @@
     }
   });
 })();
-</script>
